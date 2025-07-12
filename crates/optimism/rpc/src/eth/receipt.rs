@@ -1,5 +1,7 @@
 //! Loads and formats OP receipt RPC response.
 
+use std::borrow::Cow;
+
 use crate::{OpEthApi, OpEthApiError};
 use alloy_consensus::transaction::{SignerRecoverable, TransactionMeta};
 use alloy_eips::eip2718::Encodable2718;
@@ -236,25 +238,29 @@ impl OpReceiptBuilder {
         let timestamp = meta.timestamp;
         let block_number = meta.block_number;
         let tx_signed = *transaction.inner();
-        let core_receipt =
-            build_receipt(transaction, meta, receipt, all_receipts, None, |receipt_with_bloom| {
-                match receipt {
-                    OpReceipt::Legacy(_) => OpReceiptEnvelope::Legacy(receipt_with_bloom),
-                    OpReceipt::Eip2930(_) => OpReceiptEnvelope::Eip2930(receipt_with_bloom),
-                    OpReceipt::Eip1559(_) => OpReceiptEnvelope::Eip1559(receipt_with_bloom),
-                    OpReceipt::Eip7702(_) => OpReceiptEnvelope::Eip7702(receipt_with_bloom),
-                    OpReceipt::Deposit(receipt) => {
-                        OpReceiptEnvelope::Deposit(OpDepositReceiptWithBloom {
-                            receipt: OpDepositReceipt {
-                                inner: receipt_with_bloom.receipt,
-                                deposit_nonce: receipt.deposit_nonce,
-                                deposit_receipt_version: receipt.deposit_receipt_version,
-                            },
-                            logs_bloom: receipt_with_bloom.logs_bloom,
-                        })
-                    }
+        let core_receipt = build_receipt(
+            transaction,
+            meta,
+            Cow::Borrowed(receipt),
+            all_receipts,
+            None,
+            |receipt_with_bloom| match receipt {
+                OpReceipt::Legacy(_) => OpReceiptEnvelope::Legacy(receipt_with_bloom),
+                OpReceipt::Eip2930(_) => OpReceiptEnvelope::Eip2930(receipt_with_bloom),
+                OpReceipt::Eip1559(_) => OpReceiptEnvelope::Eip1559(receipt_with_bloom),
+                OpReceipt::Eip7702(_) => OpReceiptEnvelope::Eip7702(receipt_with_bloom),
+                OpReceipt::Deposit(receipt) => {
+                    OpReceiptEnvelope::Deposit(OpDepositReceiptWithBloom {
+                        receipt: OpDepositReceipt {
+                            inner: receipt_with_bloom.receipt,
+                            deposit_nonce: receipt.deposit_nonce,
+                            deposit_receipt_version: receipt.deposit_receipt_version,
+                        },
+                        logs_bloom: receipt_with_bloom.logs_bloom,
+                    })
                 }
-            });
+            },
+        );
 
         let op_receipt_fields = OpReceiptFieldsBuilder::new(timestamp, block_number)
             .l1_block_info(chain_spec, tx_signed, l1_block_info)?

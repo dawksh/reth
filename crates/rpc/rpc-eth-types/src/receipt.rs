@@ -8,12 +8,13 @@ use alloy_eips::eip7840::BlobParams;
 use alloy_primitives::{Address, TxKind};
 use alloy_rpc_types_eth::{Log, ReceiptWithBloom, TransactionReceipt};
 use reth_ethereum_primitives::{Receipt, TransactionSigned};
+use std::borrow::Cow;
 
 /// Builds an [`TransactionReceipt`] obtaining the inner receipt envelope from the given closure.
 pub fn build_receipt<R, T, E>(
     transaction: Recovered<&T>,
     meta: TransactionMeta,
-    receipt: &R,
+    receipt: Cow<'_, R>,
     all_receipts: &[R],
     blob_params: Option<BlobParams>,
     build_envelope: impl FnOnce(ReceiptWithBloom<alloy_consensus::Receipt<Log>>) -> E,
@@ -114,7 +115,7 @@ impl EthReceiptBuilder {
         let base = build_receipt(
             transaction,
             meta,
-            receipt,
+            Cow::Borrowed(receipt),
             all_receipts,
             blob_params,
             |receipt_with_bloom| ReceiptEnvelope::from_typed(receipt.tx_type, receipt_with_bloom),
